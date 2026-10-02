@@ -43,6 +43,7 @@ pub async fn download_model(
     model_manager: State<'_, Arc<ModelManager>>,
     model_id: String,
 ) -> Result<(), String> {
+    let _keep_awake = crate::keep_awake::KeepAwake::acquire(&app_handle);
     let result = model_manager
         .download_model(&model_id)
         .await

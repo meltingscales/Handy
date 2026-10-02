@@ -11,6 +11,7 @@ mod commands;
 mod helpers;
 #[cfg(desktop)]
 mod input;
+mod keep_awake;
 mod llm_client;
 mod managers;
 mod memory;

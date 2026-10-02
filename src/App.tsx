@@ -31,6 +31,7 @@ import { useSettings } from "./hooks/useSettings";
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
+import { isMobile } from "@/lib/utils/platform";
 
 type OnboardingStep = "accessibility" | "model" | "done";
 
@@ -49,8 +50,6 @@ const renderSettingsContent = (
     SECTIONS_CONFIG[section]?.component || SECTIONS_CONFIG.general.component;
   return <ActiveComponent />;
 };
-
-const isMobile = platform() === "android" || platform() === "ios";
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -363,10 +362,12 @@ function App() {
         </ErrorBoundary>
         {/* Main content area that takes remaining space */}
         <div className="flex-1 flex overflow-hidden">
-          <Sidebar
-            activeSection={currentSection}
-            onSectionChange={setCurrentSection}
-          />
+          {!isMobile && (
+            <Sidebar
+              activeSection={currentSection}
+              onSectionChange={setCurrentSection}
+            />
+          )}
           {/* Scrollable content area */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <div ref={settingsScrollRef} className="flex-1 overflow-y-auto">
@@ -382,6 +383,14 @@ function App() {
         {isMobile && <RecordButton />}
         {/* Fixed footer at bottom */}
         <Footer />
+        {/* Phones are too narrow for the sidebar: navigate from the bottom */}
+        {isMobile && (
+          <Sidebar
+            activeSection={currentSection}
+            onSectionChange={setCurrentSection}
+            orientation="bottom"
+          />
+        )}
       </div>
     );
   }

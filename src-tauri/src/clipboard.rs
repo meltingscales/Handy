@@ -882,6 +882,11 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
 /// is left on the clipboard for the user to paste.
 #[cfg(mobile)]
 pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
+    let text = if crate::settings::get_settings(&app_handle).append_trailing_space {
+        format!("{} ", text)
+    } else {
+        text
+    };
     info!("Copying transcript to clipboard (no paste on mobile)");
     write_text_to_clipboard(&app_handle, &text)
 }

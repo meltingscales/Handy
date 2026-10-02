@@ -23,6 +23,7 @@ import { AccelerationSelector } from "../AccelerationSelector";
 import { LazyStreamClose } from "../LazyStreamClose";
 import { FillerWordRemoval } from "../FillerWordRemoval";
 import { VadBackendSelector } from "../VadBackendSelector";
+import { isMobile } from "@/lib/utils/platform";
 
 export const AdvancedSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -32,20 +33,28 @@ export const AdvancedSettings: React.FC = () => {
   return (
     <div className="max-w-3xl w-full mx-auto space-y-6">
       <SettingsGroup title={t("settings.advanced.groups.app")}>
-        <StartHidden descriptionMode="tooltip" grouped={true} />
-        <AutostartToggle descriptionMode="tooltip" grouped={true} />
-        <ShowTrayIcon descriptionMode="tooltip" grouped={true} />
-        <ShowOverlay descriptionMode="tooltip" grouped={true} />
+        {/* Window, tray, autostart and overlay are desktop-only. */}
+        {!isMobile && (
+          <>
+            <StartHidden descriptionMode="tooltip" grouped={true} />
+            <AutostartToggle descriptionMode="tooltip" grouped={true} />
+            <ShowTrayIcon descriptionMode="tooltip" grouped={true} />
+            <ShowOverlay descriptionMode="tooltip" grouped={true} />
+          </>
+        )}
         <ModelUnloadTimeoutSetting descriptionMode="tooltip" grouped={true} />
         <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
-      <SettingsGroup title={t("settings.advanced.groups.output")}>
-        <PasteMethodSetting descriptionMode="tooltip" grouped={true} />
-        <TypingToolSetting descriptionMode="tooltip" grouped={true} />
-        <ClipboardHandlingSetting descriptionMode="tooltip" grouped={true} />
-        <AutoSubmit descriptionMode="tooltip" grouped={true} />
-      </SettingsGroup>
+      {/* Mobile cannot type into other apps; it always copies to the clipboard. */}
+      {!isMobile && (
+        <SettingsGroup title={t("settings.advanced.groups.output")}>
+          <PasteMethodSetting descriptionMode="tooltip" grouped={true} />
+          <TypingToolSetting descriptionMode="tooltip" grouped={true} />
+          <ClipboardHandlingSetting descriptionMode="tooltip" grouped={true} />
+          <AutoSubmit descriptionMode="tooltip" grouped={true} />
+        </SettingsGroup>
+      )}
 
       <SettingsGroup title={t("settings.advanced.groups.transcription")}>
         <VoiceActivityDetection descriptionMode="tooltip" grouped={true} />
@@ -65,10 +74,12 @@ export const AdvancedSettings: React.FC = () => {
       {experimentalEnabled && (
         <SettingsGroup title={t("settings.advanced.groups.experimental")}>
           <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
-          <KeyboardImplementationSelector
-            descriptionMode="tooltip"
-            grouped={true}
-          />
+          {!isMobile && (
+            <KeyboardImplementationSelector
+              descriptionMode="tooltip"
+              grouped={true}
+            />
+          )}
           <AccelerationSelector descriptionMode="tooltip" grouped={true} />
           <LazyStreamClose descriptionMode="tooltip" grouped={true} />
           <VadBackendSelector descriptionMode="tooltip" grouped={true} />

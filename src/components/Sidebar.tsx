@@ -79,11 +79,14 @@ export const SECTIONS_CONFIG = {
 interface SidebarProps {
   activeSection: SidebarSection;
   onSectionChange: (section: SidebarSection) => void;
+  /** "bottom" renders a compact tab bar for narrow (mobile) screens. */
+  orientation?: "side" | "bottom";
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeSection,
   onSectionChange,
+  orientation = "side",
 }) => {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -91,6 +94,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const availableSections = Object.entries(SECTIONS_CONFIG)
     .filter(([_, config]) => config.enabled(settings))
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
+
+  if (orientation === "bottom") {
+    return (
+      <nav className="flex w-full border-t border-mid-gray/20 px-1 py-1">
+        {availableSections.map((section) => {
+          const Icon = section.icon;
+          const isActive = activeSection === section.id;
+
+          return (
+            <button
+              key={section.id}
+              type="button"
+              className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 py-1.5 rounded-lg transition-colors ${
+                isActive ? "bg-logo-primary/80" : "opacity-85"
+              }`}
+              onClick={() => onSectionChange(section.id)}
+            >
+              <Icon width={22} height={22} className="shrink-0" />
+              <span className="text-[11px] font-medium truncate max-w-full">
+                {t(section.labelKey)}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    );
+  }
 
   return (
     <div className="flex flex-col w-40 h-full border-e border-mid-gray/20 items-center px-2">

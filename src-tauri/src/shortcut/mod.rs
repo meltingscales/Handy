@@ -10,7 +10,13 @@
 //! setting and can be changed at runtime.
 
 mod handler;
+#[cfg(desktop)]
 pub mod handy_keys;
+#[cfg(mobile)]
+mod mobile;
+#[cfg(mobile)]
+pub use mobile::{handy_keys, tauri_impl};
+#[cfg(desktop)]
 pub mod tauri_impl;
 
 use log::{debug, error, info, warn};

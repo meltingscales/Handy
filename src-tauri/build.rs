@@ -19,6 +19,10 @@ fn main() {
         println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../lib/Handy:$ORIGIN/../lib");
     }
 
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("android") {
+        provide_empty_libpthread();
+    }
+
     // Stage transcribe-cpp's shared runtime libraries (and the dlopen'd ggml
     // backend modules) for the installer. Self-gates on the shared /
     // dynamic-backends posture used by Linux and Windows; it's a no-op for the
@@ -35,6 +39,18 @@ fn main() {
     stage_vc_runtime_dlls();
 
     tauri_build::build()
+}
+
+/// transcribe-cpp-sys treats Android as generic UNIX and asks to link
+/// `pthread`, but Android's pthreads live in libc and the NDK ships no
+/// libpthread. Satisfy `-lpthread` with an empty archive until transcribe-cpp
+/// stops listing it for Android (cmake/transcribe-install.cmake).
+fn provide_empty_libpthread() {
+    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let dir = out_dir.join("android-link-shims");
+    std::fs::create_dir_all(&dir).expect("create android link shim dir");
+    std::fs::write(dir.join("libpthread.a"), b"!<arch>\n").expect("write empty libpthread.a");
+    println!("cargo:rustc-link-search=native={}", dir.display());
 }
 
 /// Stage the MSVC runtime DLLs into `transcribe-libs/` for app-local deployment.

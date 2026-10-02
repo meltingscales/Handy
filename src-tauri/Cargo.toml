@@ -47,7 +47,6 @@ rusqlite_migration = "2.3"
 tauri-plugin-fs = "2.4.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rdev = { git = "https://github.com/rustdesk-org/rdev" }
 cpal = "0.16.0"
 rtrb = "0.4.0"
 anyhow = "1.0.95"
@@ -58,7 +57,6 @@ env_filter = "0.1.0"
 tokio = "1.43.0"
 vad-rs = { git = "https://github.com/cjpais/vad-rs", default-features = false }
 earshot = "1.2.2"
-enigo = "0.6.1"
 rodio = { git = "https://github.com/cjpais/rodio.git" }
 reqwest = { version = "0.12", features = ["json", "stream", "gzip", "brotli", "deflate"] }
 futures-util = "0.3"
@@ -80,7 +78,6 @@ sha2 = "0.10"
 # Canary, Cohere). Per-platform backend features are added in the target tables.
 transcribe-rs = { version = "0.3.8", features = ["onnx"] }
 transcribe-cpp = { version = "0.2.4", default-features = false }
-handy-keys = "0.3.4"
 ferrous-opencc = "0.2.3"
 clap = { version = "4", features = ["derive"] }
 specta = "=2.0.0-rc.22"
@@ -99,6 +96,15 @@ tauri-plugin-autostart = "2.5.1"
 tauri-plugin-global-shortcut = "2.3.1"
 tauri-plugin-single-instance = "2.3.2"
 tauri-plugin-updater = "2.10.1"
+# Global key capture and synthetic input: no Android/iOS backends.
+rdev = { git = "https://github.com/rustdesk-org/rdev" }
+enigo = "0.6.1"
+handy-keys = "0.3.4"
+
+[target.'cfg(target_os = "android")'.dependencies]
+# reqwest and hf-hub pull native-tls, which needs OpenSSL; the NDK ships none,
+# so build it from source for Android instead of changing desktop TLS.
+openssl = { version = "0.10", features = ["vendored"] }
 
 [target.'cfg(windows)'.dependencies]
 # Used to reach ICoreWebView2Settings3 through the webview's controller

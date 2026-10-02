@@ -9,6 +9,7 @@
 //! appear under "Open at Login" with the app's name and icon.
 
 use tauri::AppHandle;
+#[cfg(desktop)]
 use tauri_plugin_autostart::ManagerExt;
 
 /// Apply the user's autostart preference using the best mechanism for the
@@ -18,6 +19,7 @@ use tauri_plugin_autostart::ManagerExt;
 /// every launch, so a transient failure self-heals and must not block
 /// startup. This mirrors the pre-existing behavior of ignoring
 /// enable()/disable() results.
+#[cfg(desktop)]
 pub fn apply_autostart(app: &AppHandle, enabled: bool) {
     #[cfg(target_os = "macos")]
     if macos::login_item_api_available() {
@@ -40,6 +42,10 @@ pub fn apply_autostart(app: &AppHandle, enabled: bool) {
         );
     }
 }
+
+/// Android and iOS have no launch-at-login.
+#[cfg(mobile)]
+pub fn apply_autostart(_app: &AppHandle, _enabled: bool) {}
 
 #[cfg(target_os = "macos")]
 mod macos {

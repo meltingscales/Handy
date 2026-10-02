@@ -9,11 +9,17 @@ pub mod cli;
 mod clipboard;
 mod commands;
 mod helpers;
+#[cfg(desktop)]
 mod input;
 mod llm_client;
 mod managers;
 mod memory;
+#[cfg(desktop)]
 mod overlay;
+#[cfg(mobile)]
+#[path = "overlay_mobile.rs"]
+mod overlay;
+#[cfg(desktop)]
 mod paste_tx;
 pub mod portable;
 mod secure_input;
@@ -21,12 +27,17 @@ mod settings;
 mod shortcut;
 mod signal_handle;
 mod transcription_coordinator;
+#[cfg(desktop)]
 mod tray;
+#[cfg(mobile)]
+#[path = "tray_mobile.rs"]
+mod tray;
+#[cfg(desktop)]
 mod tray_i18n;
 mod utils;
 
 pub use cli::CliArgs;
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, desktop))]
 use specta_typescript::{BigIntExportBehavior, Typescript};
 use tauri_specta::{collect_commands, collect_events, Builder};
 pub use utils::env_flag_enabled;
@@ -38,11 +49,16 @@ use managers::model::ModelManager;
 use managers::transcription::TranscriptionManager;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
+#[cfg(desktop)]
 use tauri::image::Image;
 pub use transcription_coordinator::TranscriptionCoordinator;
 
+#[cfg(desktop)]
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Emitter, Listener, Manager};
+#[cfg(desktop)]
+use tauri::Listener;
+use tauri::{AppHandle, Emitter, Manager};
+#[cfg(desktop)]
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
@@ -96,6 +112,7 @@ fn build_console_filter() -> env_filter::Filter {
 
 fn show_main_window(app: &AppHandle) {
     if let Some(main_window) = app.get_webview_window("main") {
+        #[cfg(desktop)]
         if let Err(e) = main_window.unminimize() {
             log::error!("Failed to unminimize webview window: {}", e);
         }
@@ -217,6 +234,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(model_manager.clone());
     app_handle.manage(transcription_manager.clone());
     app_handle.manage(history_manager.clone());
+    #[cfg(desktop)]
     app_handle.manage(tray::TrayState::new());
 
     // Note: Shortcuts are NOT initialized here.
@@ -235,6 +253,22 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // by the time `setup` runs the app has already launched as a Regular
     // (Dock) app, and demoting it at runtime is unreliable (#1787).
 
+    #[cfg(desktop)]
+    setup_tray(app_handle);
+
+    // Apply the autostart preference (SMAppService login item on macOS 13+,
+    // tauri-plugin-autostart elsewhere)
+    autostart::apply_autostart(
+        app_handle,
+        settings::get_settings(app_handle).autostart_enabled,
+    );
+
+    // Create the recording overlay window (hidden by default)
+    utils::create_recording_overlay(app_handle);
+}
+
+#[cfg(desktop)]
+fn setup_tray(app_handle: &AppHandle) {
     // Get the current theme to set the appropriate initial icon
     let initial_theme = tray::get_current_theme(app_handle);
 
@@ -361,13 +395,6 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.listen("model-state-changed", move |_| {
         tray::update_tray_menu(&app_handle_for_listener);
     });
-
-    // Apply the autostart preference (SMAppService login item on macOS 13+,
-    // tauri-plugin-autostart elsewhere)
-    autostart::apply_autostart(app_handle, settings.autostart_enabled);
-
-    // Create the recording overlay window (hidden by default)
-    utils::create_recording_overlay(app_handle);
 }
 
 #[tauri::command]
@@ -619,7 +646,13 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
     0
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Android/iOS entry point: there is no command line, so run with defaults.
+#[cfg(mobile)]
+#[tauri::mobile_entry_point]
+fn mobile_run() {
+    run(CliArgs::default());
+}
+
 pub fn run(cli_args: CliArgs) {
     // Avoid ggml-metal residency-set teardown assertions when a native engine
     // outlives the Tauri shutdown sequence (#1902). This must happen before
@@ -771,7 +804,9 @@ pub fn run(cli_args: CliArgs) {
             managers::transcription::StreamPhaseEvent,
         ]);
 
-    #[cfg(debug_assertions)] // <- Only export on non-release builds
+    // Only export on non-release desktop builds; a mobile build runs on the
+    // device, where the source tree does not exist.
+    #[cfg(all(debug_assertions, desktop))]
     specta_builder
         .export(
             Typescript::default().bigint(BigIntExportBehavior::Number),
@@ -848,6 +883,7 @@ pub fn run(cli_args: CliArgs) {
     // (--transcribe-file/--list-devices/--list-models) a silent no-op whenever the
     // app is already open, so skip it in headless mode and run a standalone
     // instance instead.
+    #[cfg(desktop)]
     if !headless_mode {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             if args.iter().any(|a| a == "--toggle-transcription") {
@@ -870,21 +906,26 @@ pub fn run(cli_args: CliArgs) {
         }));
     }
 
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+            .plugin(tauri_plugin_autostart::init(
+                MacosLauncher::LaunchAgent,
+                Some(vec![]),
+            ));
+    }
+
     #[allow(unused_mut)]
     let mut app = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec![]),
-        ))
         .manage(cli_args.clone())
         .setup(move |app| {
             #[cfg(target_os = "windows")]
@@ -941,14 +982,20 @@ pub fn run(cli_args: CliArgs) {
 
             // Create main window programmatically so we can set data_directory
             // for portable mode (redirects WebView2 cache to portable Data dir)
+            #[allow(unused_mut)]
             let mut win_builder =
-                tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
+                tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()));
+
+            #[cfg(desktop)]
+            {
+                win_builder = win_builder
                     .title("Handy")
                     .inner_size(680.0, 570.0)
                     .min_inner_size(680.0, 570.0)
                     .resizable(true)
                     .maximizable(true)
                     .visible(false);
+            }
 
             if let Some(data_dir) = portable::data_dir() {
                 win_builder = win_builder.data_directory(data_dir.join("webview"));

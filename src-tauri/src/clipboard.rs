@@ -1,19 +1,27 @@
+#[cfg(desktop)]
 use crate::input::{self, EnigoState};
 #[cfg(target_os = "linux")]
 use crate::settings::TypingTool;
+#[cfg(desktop)]
 use crate::settings::{get_settings, AutoSubmitKey, ClipboardHandling, PasteMethod};
+#[cfg(desktop)]
 use enigo::{Direction, Enigo, Key, Keyboard};
 use log::info;
+#[cfg(desktop)]
 use std::process::Command;
 #[cfg(target_os = "linux")]
 use std::sync::OnceLock;
+#[cfg(desktop)]
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
+#[cfg(desktop)]
+use tauri::Manager;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 #[cfg(target_os = "linux")]
 use crate::utils::{is_gnome_wayland, is_kde_wayland, is_wayland};
 
+#[cfg(desktop)]
 fn with_enigo<T>(
     app_handle: &AppHandle,
     f: impl FnOnce(&mut Enigo) -> Result<T, String>,
@@ -41,6 +49,7 @@ fn write_text_to_clipboard(app_handle: &AppHandle, text: &str) -> Result<(), Str
         .map_err(|e| format!("Failed to write to clipboard: {}", e))
 }
 
+#[cfg(desktop)]
 fn finish_clipboard_paste(
     paste_result: Result<(), String>,
     paste_delay_after_ms: u64,
@@ -52,6 +61,7 @@ fn finish_clipboard_paste(
 }
 
 /// Pastes text using the clipboard: saves current content, writes text, sends paste keystroke, restores clipboard.
+#[cfg(desktop)]
 fn paste_via_clipboard(
     text: &str,
     app_handle: &AppHandle,
@@ -679,6 +689,7 @@ fn send_key_combo_via_xdotool(paste_method: &PasteMethod) -> Result<(), String> 
 
 /// Pastes text by invoking an external script.
 /// The script receives the text to paste as a single argument.
+#[cfg(desktop)]
 fn paste_via_external_script(text: &str, script_path: &str) -> Result<(), String> {
     info!("Pasting via external script: {}", script_path);
 
@@ -708,6 +719,7 @@ fn paste_via_external_script(text: &str, script_path: &str) -> Result<(), String
 }
 
 /// Types text directly by simulating individual key presses.
+#[cfg(desktop)]
 fn paste_direct(
     text: &str,
     app_handle: &AppHandle,
@@ -724,6 +736,7 @@ fn paste_direct(
     with_enigo(app_handle, |enigo| input::paste_text_direct(enigo, text))
 }
 
+#[cfg(desktop)]
 pub(crate) fn send_return_key(enigo: &mut Enigo, key_type: AutoSubmitKey) -> Result<(), String> {
     match key_type {
         AutoSubmitKey::Enter => {
@@ -767,10 +780,12 @@ pub(crate) fn send_return_key(enigo: &mut Enigo, key_type: AutoSubmitKey) -> Res
     Ok(())
 }
 
+#[cfg(desktop)]
 fn should_send_auto_submit(auto_submit: bool, paste_method: PasteMethod) -> bool {
     auto_submit && paste_method != PasteMethod::None
 }
 
+#[cfg(desktop)]
 pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
     let settings = get_settings(&app_handle);
     let paste_method = settings.paste_method;
@@ -861,6 +876,14 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+/// Mobile has no synthetic input to type into other apps, so the transcript
+/// is left on the clipboard for the user to paste.
+#[cfg(mobile)]
+pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
+    info!("Copying transcript to clipboard (no paste on mobile)");
+    write_text_to_clipboard(&app_handle, &text)
 }
 
 #[cfg(test)]

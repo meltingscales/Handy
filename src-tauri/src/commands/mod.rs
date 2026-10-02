@@ -139,7 +139,18 @@ pub fn check_apple_intelligence_available() -> bool {
 /// On macOS, this will return an error if accessibility permissions are not granted.
 #[specta::specta]
 #[tauri::command]
+#[cfg_attr(mobile, allow(unused_variables))]
 pub fn initialize_enigo(app: AppHandle) -> Result<(), String> {
+    // Mobile has no synthetic input system; nothing to initialize.
+    #[cfg(mobile)]
+    return Ok(());
+
+    #[cfg(desktop)]
+    initialize_enigo_desktop(app)
+}
+
+#[cfg(desktop)]
+fn initialize_enigo_desktop(app: AppHandle) -> Result<(), String> {
     use crate::input::EnigoState;
 
     // Check if already initialized

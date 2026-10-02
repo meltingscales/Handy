@@ -285,13 +285,11 @@ fn create_audio_recorder(
 ) -> Result<AudioRecorder, anyhow::Error> {
     let detector: Box<dyn VoiceActivityDetector> = match backend {
         VadBackend::Silero => {
-            let vad_path = app_handle
-                .path()
-                .resolve(
-                    "resources/models/silero_vad_v4.onnx",
-                    tauri::path::BaseDirectory::Resource,
-                )
-                .map_err(|e| anyhow::anyhow!("Failed to resolve VAD path: {e}"))?;
+            let vad_path = crate::helpers::resources::resource_file_path(
+                app_handle,
+                "resources/models/silero_vad_v4.onnx",
+            )
+            .map_err(|e| anyhow::anyhow!("Failed to resolve VAD path: {e}"))?;
             Box::new(
                 SileroVad::new(vad_path, SILERO_VAD_THRESHOLD)
                     .map_err(|e| anyhow::anyhow!("Failed to create SileroVad: {e}"))?,

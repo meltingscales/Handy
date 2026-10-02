@@ -530,6 +530,14 @@ async showMainWindowCommand() : Promise<Result<null, string>> {
 async cancelOperation() : Promise<void> {
     await TAURI_INVOKE("cancel_operation");
 },
+/**
+ * Start or stop a transcription from the app UI, the same as pressing the
+ * transcribe shortcut. Mobile has no global shortcuts, so this is how
+ * recording starts there.
+ */
+async toggleTranscription() : Promise<void> {
+    await TAURI_INVOKE("toggle_transcription");
+},
 async isPortable() : Promise<boolean> {
     return await TAURI_INVOKE("is_portable");
 },

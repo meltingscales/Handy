@@ -18,6 +18,7 @@ import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import SecureInputWarning from "./components/SecureInputWarning";
 import Footer from "./components/footer";
+import RecordButton from "./components/RecordButton";
 import Onboarding, { AccessibilityOnboarding } from "./components/onboarding";
 import {
   DebugSettings,
@@ -48,6 +49,8 @@ const renderSettingsContent = (
     SECTIONS_CONFIG[section]?.component || SECTIONS_CONFIG.general.component;
   return <ActiveComponent />;
 };
+
+const isMobile = platform() === "android" || platform() === "ios";
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -375,6 +378,8 @@ function App() {
             </div>
           </div>
         </div>
+        {/* No global shortcuts on mobile: record from inside the app */}
+        {isMobile && <RecordButton />}
         {/* Fixed footer at bottom */}
         <Footer />
       </div>

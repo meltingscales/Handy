@@ -746,6 +746,7 @@ pub fn run(cli_args: CliArgs) {
             trigger_update_check,
             show_main_window_command,
             commands::cancel_operation,
+            commands::toggle_transcription,
             commands::is_portable,
             commands::is_update_checks_locked,
             commands::get_app_dir_path,
@@ -937,6 +938,14 @@ pub fn run(cli_args: CliArgs) {
 
             specta_builder.mount_events(app);
 
+            // hf-hub's default cache lives under $HOME, which Android apps do
+            // not have; keep model downloads in the app's data dir instead.
+            #[cfg(mobile)]
+            std::env::set_var(
+                "HF_HOME",
+                portable::hugging_face_home(&app.path().app_data_dir()?),
+            );
+
             // Headless one-shot path (`--transcribe-file` / `--list-devices` /
             // `--list-models`): initialize only what transcription needs — the
             // store/paths plugins, the model + transcription managers, and the
@@ -1002,7 +1011,10 @@ pub fn run(cli_args: CliArgs) {
             }
 
             // Only used on Windows, to disable WebView2 browser accelerators.
-            #[cfg_attr(not(target_os = "windows"), allow(unused_variables))]
+            #[cfg_attr(
+                not(any(target_os = "windows", target_os = "android")),
+                allow(unused_variables)
+            )]
             let main_window = win_builder.build()?;
 
             // Disable WebView2 browser accelerators (F5, F6, Ctrl+F, F12, ...).
@@ -1028,6 +1040,31 @@ pub fn run(cli_args: CliArgs) {
                     }
                 });
             }
+
+            // cpal reaches Android's audio APIs through ndk-context, which
+            // nothing else initializes in a Tauri app. Hand it the JVM and the
+            // activity before the frontend starts touching audio devices.
+            #[cfg(target_os = "android")]
+            main_window.with_webview(|webview| {
+                webview.jni_handle().exec(|env, activity, _webview| {
+                    let vm = match env.get_java_vm() {
+                        Ok(vm) => vm,
+                        Err(e) => return log::error!("Failed to get JavaVM: {e}"),
+                    };
+                    let activity = match env.new_global_ref(activity) {
+                        Ok(activity) => activity,
+                        Err(e) => return log::error!("Failed to pin activity: {e}"),
+                    };
+                    unsafe {
+                        ndk_context::initialize_android_context(
+                            vm.get_java_vm_pointer().cast(),
+                            activity.as_obj().as_raw().cast(),
+                        );
+                    }
+                    // ndk-context keeps the raw pointer for the process lifetime.
+                    std::mem::forget(activity);
+                });
+            })?;
 
             let mut settings = get_settings(app.handle());
 

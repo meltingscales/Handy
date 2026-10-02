@@ -135,6 +135,15 @@ pub fn check_apple_intelligence_available() -> bool {
     }
 }
 
+/// Start or stop a transcription from the app UI, the same as pressing the
+/// transcribe shortcut. Mobile has no global shortcuts, so this is how
+/// recording starts there.
+#[specta::specta]
+#[tauri::command]
+pub fn toggle_transcription(app: AppHandle) {
+    crate::signal_handle::send_transcription_input(&app, "transcribe", "UI");
+}
+
 /// Try to initialize Enigo (keyboard/mouse simulation).
 /// On macOS, this will return an error if accessibility permissions are not granted.
 #[specta::specta]

@@ -105,6 +105,10 @@ handy-keys = "0.3.4"
 # reqwest and hf-hub pull native-tls, which needs OpenSSL; the NDK ships none,
 # so build it from source for Android instead of changing desktop TLS.
 openssl = { version = "0.10", features = ["vendored"] }
+# cpal reaches Android audio through ndk-context, which a Tauri app must
+# initialize itself from the activity's JNI environment (see lib.rs).
+jni = "0.21"
+ndk-context = "0.1"
 
 [target.'cfg(windows)'.dependencies]
 # Used to reach ICoreWebView2Settings3 through the webview's controller

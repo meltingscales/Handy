@@ -50,7 +50,7 @@ pub fn init() {
 
 /// Keep hf-hub downloads inside the portable data directory. hf-hub appends
 /// its own `hub` component to `HF_HOME` for model snapshots and blobs.
-fn hugging_face_home(data_dir: &Path) -> PathBuf {
+pub(crate) fn hugging_face_home(data_dir: &Path) -> PathBuf {
     data_dir.join("huggingface")
 }
 
